@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beso - Joséan Log Music Visualizer</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f0f23, #1a1a2e, #16213e);
+            overflow: hidden;
+            color: white;
+            height: 100vh;
+        }
+
+        canvas {
+            display: block;
+            cursor: crosshair;
+        }
+
+        .controls-panel {
+            position: absolute;
+            top: 24px;
+            left: 24px;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 28px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            min-width: 320px;
+            max-width: 400px;
+        }
+
+        .controls-panel.hidden {
+            opacity: 0;
+            transform: translateX(-20px);
+            pointer-events: none;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+
+        .music-icon {
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(135deg, #ff1493, #ff69b4);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+        }
+
+        .title {
+            font-size: 22px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #ff1493, #ff69b4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .play-button {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            background: linear-gradient(135deg, #ff1493, #ff69b4);
+            color: white;
+            font-weight: 600;
+            padding: 16px 24px;
+            border: none;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-bottom: 24px;
+            font-size: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .play-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .play-button:hover::before {
+            left: 100%;
+        }
+
+        .play-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(255, 20, 147, 0.4);
+        }
+
+        .play-button:disabled {
+            background: linear-gradient(135deg, #6b7280, #6b7280);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-label {
+            display: block;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 15px;
+            font-weight: 500;
+            margin-bottom: 12px;
+        }
+
+        .slider {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 3px;
+            outline: none;
+            appearance: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .slider:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff1493, #ff69b4);
+            cursor: pointer;
+            border: 3px solid white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .slider::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff1493, #ff69b4);
+            cursor: pointer;
+            border: 3px solid white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .color-control {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .color-picker {
+            width: 56px;
+            height: 40px;
+            border-radius: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            background: none;
+            transition: all 0.2s ease;
+        }
+
+        .color-picker:hover {
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: scale(1.05);
+        }
+
+        .color-value {
+            color: rgba(255, 255, 255, 0.7);
+            font-family: 'Fira Code', 'Courier New', monospace;
+            font-size: 13px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 12px;
+            border-radius: 8px;
+            flex: 1;
+        }
+
+        .toggle-button {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(20px);
+            border-radius: 50%;
+            padding: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            color: white;
+        }
+
+        .toggle-button:hover {
+            background: rgba(0, 0, 0, 0.8);
+            transform: rotate(180deg) scale(1.1);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            margin-top: 16px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #ff1493, #ff69b4);
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <audio id="audio" preload="auto">
+        <source src="beso.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- Controls Panel -->
+    <div id="controlsPanel" class="controls-panel">
+        <div class="header">
+            <div class="music-icon">♪</div>
+            <div>
+                <h1 class="title">Beso</h1>
+            </div>
+        </div>
+
+        <button id="playButton" class="play-button">
+            <span id="playIcon">▶</span>
+            <span id="playText">Reproducir</span>
+        </button>
+
+        <div class="progress-bar">
+            <div id="progressFill" class="progress-fill"></div>
+        </div>
+
+        <div class="control-group">
+            <label class="control-label">Velocidad de lluvia: <span id="speedValue">15</span></label>
+            <input type="range" id="speedSlider" class="slider" min="5" max="50" value="15">
+        </div>
+
+        <div class="control-group">
+            <label class="control-label">Tamaño de texto: <span id="sizeValue">16</span>px</label>
+            <input type="range" id="sizeSlider" class="slider" min="12" max="32" value="16">
+        </div>
+
+        <div class="control-group">
+            <label class="control-label">Color del texto</label>
+            <div class="color-control">
+                <input type="color" id="colorPicker" class="color-picker" value="#ff1493">
+                <span id="colorValue" class="color-value">#ff1493</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toggle Controls Button -->
+    <button id="toggleButton" class="toggle-button">
+        <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2l3.09 6.26L22 9l-5 4.87L18.18 21 12 17.77 5.82 21 7 13.87 2 9l6.91-1.74L12 2z"/>
+        </svg>
+    </button>
+
+    <script>
+        // Global variables
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const audio = document.getElementById('audio');
+        
+        let isPlaying = false;
+        let speed = 15;
+        let fontSize = 16;
+        let color = '#ff1493';
+        let currentMessage = 'Beso';
+        let showControls = true;
+        let isLoading = false;
+        let startTime = 0;
+        
+        let drops = [];
+        let explosions = [];
+        let animationId;
+        
+        // Beautiful romantic words for the matrix effect
+        const beautifulWords = [
+            'amor', 'alma', 'vida', 'ternura', 'caricia', 'abrazo', 'sonrisa', 'mirada',
+            'susurro', 'dulzura', 'paz', 'serenidad', 'felicidad', 'alegría', 'esperanza', 'ilusión',
+            'magia', 'encanto', 'belleza', 'gracia', 'elegancia', 'delicadeza', 'pureza', 'bondad',
+            'cariño', 'afecto', 'pasión', 'entrega', 'devoción', 'lealtad', 'fidelidad', 'honestidad',
+            'sinceridad', 'confianza', 'respeto', 'comprensión', 'apoyo', 'compañía', 'unión', 'armonía',
+            'complicidad', 'intimidad', 'conexión', 'vínculo', 'refugio', 'hogar', 'calor', 'abrigo',
+            'consuelo', 'alivio', 'sanación', 'renovación', 'renacimiento', 'inspiración', 'motivación', 'fortaleza',
+            'valentía', 'coraje', 'determinación', 'perseverancia', 'paciencia', 'tolerancia', 'generosidad', 'nobleza',
+            'humildad', 'sencillez', 'naturalidad', 'espontaneidad', 'libertad', 'independencia', 'autonomía', 'plenitud',
+            'gratitud', 'reconocimiento', 'valoración', 'aprecio', 'admiración', 'respeto', 'veneración', 'adoración'
+        ];
+
+        // Initialize canvas
+        function initCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            
+            const columns = Math.floor(canvas.width / fontSize);
+            drops = Array(columns).fill(1);
+        }
+
+        // Get random beautiful word
+        function getRandomWord() {
+            return beautifulWords[Math.floor(Math.random() * beautifulWords.length)];
+        }
+
+        // Create explosion effect
+        function createExplosion(x, y) {
+            const particles = 25;
+            const words = ['AMOR', 'ALMA', 'VIDA', 'TERNURA', 'CARICIA'];
+            
+            for (let i = 0; i < particles; i++) {
+                const angle = (Math.PI * 2 * i) / particles;
+                const speed = 2 + Math.random() * 4;
+                const word = words[Math.floor(Math.random() * words.length)];
+                
+                explosions.push({
+                    x: x,
+                    y: y,
+                    dx: Math.cos(angle) * speed,
+                    dy: Math.sin(angle) * speed,
+                    life: 80,
+                    maxLife: 80,
+                    word: word,
+                    size: fontSize + Math.random() * 10
+                });
+            }
+        }
+
+        // Draw function
+        function draw() {
+            // Fade effect
+            ctx.fillStyle = 'rgba(15, 15, 35, 0.08)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw matrix rain
+            ctx.fillStyle = color;
+            ctx.font = `${fontSize}px 'Inter', sans-serif`;
+            ctx.textAlign = 'center';
+
+            for (let i = 0; i < drops.length; i++) {
+                const text = getRandomWord();
+                
+                const x = i * fontSize + fontSize/2;
+                const y = drops[i] * fontSize;
+                
+                // Add glow effect
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 10;
+                ctx.fillText(text, x, y);
+                ctx.shadowBlur = 0;
+                
+                if (drops[i] * fontSize > canvas.height || Math.random() > 0.98) {
+                    drops[i] = 0;
+                }
+                drops[i]++;
+            }
+
+            // Draw explosions
+            explosions = explosions.filter(particle => {
+                const alpha = particle.life / particle.maxLife;
+                const hexAlpha = Math.floor(alpha * 255).toString(16).padStart(2, '0');
+                
+                ctx.fillStyle = color + hexAlpha;
+                ctx.font = `bold ${particle.size}px 'Inter', sans-serif`;
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 15;
+                ctx.fillText(particle.word, particle.x, particle.y);
+                ctx.shadowBlur = 0;
+                
+                particle.x += particle.dx;
+                particle.y += particle.dy;
+                particle.life--;
+                
+                return particle.life > 0;
+            });
+        }
+
+        // Animation loop
+        function animate() {
+            draw();
+            const delay = 1000 / speed;
+            setTimeout(() => {
+                animationId = requestAnimationFrame(animate);
+            }, delay);
+        }
+
+        // Update progress bar
+        function updateProgress() {
+            if (audio.duration) {
+                const progress = (audio.currentTime / audio.duration) * 100;
+                document.getElementById('progressFill').style.width = progress + '%';
+            }
+        }
+
+        // Start music and sync lyrics
+        async function startMusic() {
+            try {
+                await audio.play();
+                isPlaying = true;
+                startTime = Date.now();
+                updatePlayButton();
+                
+                // Update progress
+                const progressInterval = setInterval(() => {
+                    if (!isPlaying) {
+                        clearInterval(progressInterval);
+                        return;
+                    }
+                    updateProgress();
+                }, 100);
+
+            } catch (error) {
+                console.error('Error playing audio:', error);
+            }
+        }
+
+        // Pause music
+        function pauseMusic() {
+            audio.pause();
+            isPlaying = false;
+            updatePlayButton();
+        }
+
+        // Restart music
+        function restartMusic() {
+            audio.currentTime = 0;
+            updatePlayButton();
+            if (isPlaying) {
+                startMusic();
+            }
+        }
+
+        // Update play button
+        function updatePlayButton() {
+            const playIcon = document.getElementById('playIcon');
+            const playText = document.getElementById('playText');
+            const playButton = document.getElementById('playButton');
+            
+            if (isPlaying) {
+                playIcon.innerHTML = '⏸';
+                playText.textContent = 'Pausar';
+                playButton.disabled = false;
+            } else {
+                playIcon.innerHTML = '▶';
+                playText.textContent = 'Reproducir';
+                playButton.disabled = false;
+            }
+        }
+
+        // Toggle controls visibility
+        function toggleControls() {
+            showControls = !showControls;
+            const controlsPanel = document.getElementById('controlsPanel');
+            if (showControls) {
+                controlsPanel.classList.remove('hidden');
+            } else {
+                controlsPanel.classList.add('hidden');
+            }
+        }
+
+        // Event listeners
+        document.getElementById('playButton').addEventListener('click', () => {
+            if (isPlaying) {
+                pauseMusic();
+            } else {
+                startMusic();
+            }
+        });
+
+        document.getElementById('speedSlider').addEventListener('input', (e) => {
+            speed = parseInt(e.target.value);
+            document.getElementById('speedValue').textContent = speed;
+        });
+
+        document.getElementById('sizeSlider').addEventListener('input', (e) => {
+            fontSize = parseInt(e.target.value);
+            document.getElementById('sizeValue').textContent = fontSize;
+            initCanvas(); // Reinitialize canvas with new font size
+        });
+
+        document.getElementById('colorPicker').addEventListener('input', (e) => {
+            color = e.target.value;
+            document.getElementById('colorValue').textContent = color;
+        });
+
+        document.getElementById('toggleButton').addEventListener('click', toggleControls);
+
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            createExplosion(x, y);
+        });
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'r' || e.key === 'R') {
+                restartMusic();
+            }
+        });
+
+        // Audio events
+        audio.addEventListener('ended', () => {
+            isPlaying = false;
+            updatePlayButton();
+            document.getElementById('progressFill').style.width = '0%';
+        });
+
+        // Window resize
+        window.addEventListener('resize', initCanvas);
+
+        // Initialize
+        initCanvas();
+        animate();
+        updatePlayButton();
+    </script>
+</body>
+</html>
